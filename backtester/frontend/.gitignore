@@ -1,10 +1,28 @@
+# Python
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+
+# Environment
 .env
+**/.env
+
+# Cache
+.cache/
+**/.cache/
+.pytest_cache/
+
+# IDE
 .vscode/
 .idea/
+
+# Node
 node_modules/
+
+# Logs
+*.log
+
+# Build
 dist/
 build/
-*.log
