@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuantBacktest Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border-right: 3px solid #3b82f6;
+        }
+        .section { display: none; }
+        .section.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .metric-card:hover { transform: translateY(-2px); }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 6px;
+            background: #334155;
+            border-radius: 3px;
+            outline: none;
+        }
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .builder-section { display: none; }
+        .builder-section.active { display: block; animation: fadeIn 0.2s ease-in-out; }
+        .builder-tab.active { background: #2563eb; color: white; }
+        .condition-row { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 0.5rem; align-items: end; }
+        .heatmap-grid { display: grid; grid-template-columns: auto repeat(12, 1fr); gap: 2px; min-width: 600px; }
+        .heatmap-cell { aspect-ratio: 1.5; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'JetBrains Mono', monospace; border-radius: 3px; }
+        .heatmap-label { display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 11px; color: #94a3b8; }
+        .heatmap-header { display: flex; align-items: center; justify-content: center; font-size: 10px; color: #94a3b8; padding: 4px 0; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col hidden md:flex">
+            <div class="p-6 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <i class="fa-solid fa-chart-line text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-tight">QuantBacktest</h1>
+                    <p class="text-xs text-slate-400">Pro Edition</p>
+                </div>
+            </div>
+            <nav class="flex-1 px-3 space-y-1">
+                <a href="#" onclick="showSection('dashboard')" id="nav-dashboard" class="nav-item active flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-grid-2"></i><span>Dashboard</span>
+                </a>
+                <a href="#" onclick="showSection('builder')" id="nav-builder" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-flask"></i><span>Strategy Builder</span>
+                </a>
+                <a href="#" onclick="showSection('results')" id="nav-results" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-chart-pie"></i><span>Results</span>
+                </a>
+                <a href="#" onclick="showSection('charts')" id="nav-charts" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-chart-area"></i><span>Charts</span>
+                </a>
+                <a href="#" onclick="showSection('trades')" id="nav-trades" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-list"></i><span>Trade Log</span>
+                </a>
+                <a href="#" onclick="showSection('analytics')" id="nav-analytics" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-chart-simple"></i><span>Analytics</span>
+                </a>
+            </nav>
+            <div class="p-4 border-t border-slate-800">
+                <div class="glass rounded-lg p-4">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-xs font-bold">JS</div>
+                        <div>
+                            <p class="text-sm font-medium">John Smith</p>
+                            <p class="text-xs text-slate-400">Pro Plan</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-400">
+                        <span>Backend</span>
+                        <span id="backend-status" class="text-amber-400">Checking...</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Header -->
+        <div class="md:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 border-b border-slate-800 z-50 flex items-center justify-between px-4">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                    <i class="fa-solid fa-chart-line text-white text-sm"></i>
+                </div>
+                <span class="font-bold">QuantBacktest</span>
+            </div>
+            <button onclick="toggleMobileMenu()" class="text-slate-300 hover:text-white"><i class="fa-solid fa-bars text-xl"></i></button>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="md:hidden fixed inset-0 bg-slate-950/95 z-40 hidden pt-20 px-4">
+            <nav class="space-y-2">
+                <a href="#" onclick="showSection('dashboard'); toggleMobileMenu();" class="block px-4 py-3 rounded-lg bg-slate-900 text-slate-200">Dashboard</a>
+                <a href="#" onclick="showSection('builder'); toggleMobileMenu();" class="block px-4 py-3 rounded-lg bg-slate-900 text-slate-200">Strategy Builder</a>
+                <a href="#" onclick="showSection('results'); toggleMobileMenu();" class="block px-4 py-3 rounded-lg bg-slate-900 text-slate-200">Results</a>
+                <a href="#" onclick="showSection('charts'); toggleMobileMenu();" class="block px-4 py-3 rounded-lg bg-slate-900 text-slate-200">Charts</a>
+                <a href="#" onclick="showSection('trades'); toggleMobileMenu();" class="block px-4 py-3 rounded-lg bg-slate-900 text-slate-200">Trade Log</a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto bg-slate-950 md:pt-0 pt-16">
+            <header class="sticky top-0 z-30 glass px-6 py-4 flex items-center justify-between">
+                <div>
+                    <h2 id="page-title" class="text-xl font-semibold">Dashboard</h2>
+                    <p id="page-subtitle" class="text-sm text-slate-400">Overview of your backtesting activity</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/50 border border-slate-700 text-xs">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="text-slate-300">Connected to vectorbt</span>
+                    </div>
+                    <button class="p-2 text-slate-400 hover:text-white transition-colors"><i class="fa-regular fa-bell"></i></button>
+                    <button class="p-2 text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-gear"></i></button>
+                </div>
+            </header>
+
+            <div class="p-6 max-w-7xl mx-auto">
+                <!-- Alert -->
+                <div id="alert" class="hidden mb-6 p-4 rounded-lg border text-sm"></div>
+
+                <!-- Dashboard Section -->
+                <div id="dashboard" class="section active space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="metric-card glass rounded-xl p-5 transition-all duration-300">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-slate-400 text-sm">Total Backtests</span>
+                                <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center"><i class="fa-solid fa-vial text-blue-400 text-sm"></i></div>
+                            </div>
+                            <p id="db-total-backtests" class="text-2xl font-bold mono">-</p>
+                        </div>
+                        <div class="metric-card glass rounded-xl p-5 transition-all duration-300">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-slate-400 text-sm">Avg Win Rate</span>
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center"><i class="fa-solid fa-trophy text-emerald-400 text-sm"></i></div>
+                            </div>
+                            <p id="db-avg-winrate" class="text-2xl font-bold mono">-</p>
+                        </div>
+                        <div class="metric-card glass rounded-xl p-5 transition-all duration-300">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-slate-400 text-sm">Best Return</span>
+                                <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center"><i class="fa-solid fa-sack-dollar text-purple-400 text-sm"></i></div>
+                            </div>
+                            <p id="db-best-return" class="text-2xl font-bold mono">-</p>
+                        </div>
+                        <div class="metric-card glass rounded-xl p-5 transition-all duration-300">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-slate-400 text-sm">Avg Sharpe</span>
+                                <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center"><i class="fa-solid fa-bolt text-amber-400 text-sm"></i></div>
+                            </div>
+                            <p id="db-avg-sharpe" class="text-2xl font-bold mono">-</p>
+                        </div>
+                    </div>
+
+                    <div class="glass rounded-xl p-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                            <div>
+                                <h3 class="font-semibold">Portfolio Equity Curve</h3>
+                                <p class="text-sm text-slate-400">Last completed backtest</p>
+                            </div>
+                        </div>
+                        <div class="h-80"><canvas id="equityChart"></canvas></div>
+                    </div>
+
+                    <div class="glass rounded-xl overflow-hidden">
+                        <div class="p-6 border-b border-slate-800 flex items-center justify-between">
+                            <h3 class="font-semibold">Recent Backtests</h3>
+                            <button onclick="showSection('results')" class="text-sm text-blue-400 hover:text-blue-300">View all</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-slate-900/50 text-slate-400">
+                                    <tr>
+                                        <th class="text-left px-6 py-3 font-medium">Strategy</th>
+                                        <th class="text-left px-6 py-3 font-medium">Symbol</th>
+                                        <th class="text-left px-6 py-3 font-medium">Period</th>
+                                        <th class="text-right px-6 py-3 font-medium">Return</th>
+                                        <th class="text-right px-6 py-3 font-medium">Win Rate</th>
+                                        <th class="text-center px-6 py-3 font-medium">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-backtests-body" class="divide-y divide-slate-800">
+                                    <tr><td colspan="6" class="px-6 py-8 text-center text-slate-500">Run your first backtest to see results here.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strategy Builder Section -->
+                <div id="builder" class="section space-y-6">
+                    <!-- Builder Tabs -->
+                    <div class="glass rounded-xl p-2 flex flex-wrap gap-2">
+                        <button onclick="showBuilderTab('builder-settings')" id="tab-builder-settings" class="builder-tab px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white">Settings</button>
+                        <button onclick="showBuilderTab('builder-indicators')" id="tab-builder-indicators" class="builder-tab px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors">Indicators</button>
+                        <button onclick="showBuilderTab('builder-entry')" id="tab-builder-entry" class="builder-tab px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors">Entry Rules</button>
+                        <button onclick="showBuilderTab('builder-exit')" id="tab-builder-exit" class="builder-tab px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors">Exit Rules</button>
+                        <button onclick="showBuilderTab('builder-risk')" id="tab-builder-risk" class="builder-tab px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors">Risk Management</button>
+                    </div>
+
+                    <!-- Settings Tab -->
+                    <div id="builder-settings" class="builder-section active space-y-6">
+                        <div class="glass rounded-xl p-6">
+                            <h3 class="font-semibold mb-4">Strategy Settings</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="sm:col-span-2">
+                                    <label class="block text-sm text-slate-400 mb-2">Strategy Name</label>
+                                    <input type="text" id="custom-strategy-name" value="My Custom Strategy" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-slate-400 mb-2">Symbol / Ticker</label>
+                                    <select id="symbol-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors mono">
+                                        <option value="" disabled selected>Loading symbols...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-slate-400 mb-2">Timeframe</label>
+                                    <select id="interval-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors">
+                                        <option value="1d" selected>1 Day</option>
+                                        <option value="1wk">1 Week</option>
+                                        <option value="1mo">1 Month</option>
+                                        <option value="1h">1 Hour</option>
+                                        <option value="15m">15 Minutes</option>
+                                        <option value="5m">5 Minutes</option>
+                                        <option value="1m">1 Minute</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-slate-400 mb-2">Start Date</label>
+                                    <input type="date" id="start-date" value="2020-01-02" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-slate-400 mb-2">End Date</label>
+                                    <input type="date" id="end-date" value="2024-01-02" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-slate-400 mb-2">Initial Capital</label>
+                                    <div class="relative">
+                                        <span class="absolute left-4 top-2.5 text-slate-400">$</span>
+                                        <input type="number" id="initial-capital" value="100000" class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors mono">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glass rounded-xl p-6">
+                            <h3 class="font-semibold mb-4">Saved Custom Strategies</h3>
+                            <div id="saved-strategies-list" class="space-y-2">
+                                <p class="text-sm text-slate-500">No saved strategies yet.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Indicators Tab -->
+                    <div id="builder-indicators" class="builder-section hidden space-y-6">
+                        <div class="glass rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-semibold">Indicators</h3>
+                                <button onclick="addIndicator()" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">+ Add Indicator</button>
+                            </div>
+                            <div id="indicators-list" class="space-y-3">
+                                <!-- Injected dynamically -->
+                            </div>
+                            <div id="indicator-outputs" class="mt-4 p-3 rounded-lg bg-slate-900/50 border border-slate-800 hidden">
+                                <p class="text-xs text-slate-400 mb-1">Available outputs for conditions:</p>
+                                <p id="indicator-outputs-text" class="text-xs font-mono text-blue-400"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Entry Rules Tab -->
+                    <div id="builder-entry" class="builder-section hidden space-y-6">
+                        <div class="glass rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-semibold">Entry Rules</h3>
+                                <button onclick="addRuleGroup('entry')" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">+ Add Condition Group</button>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-4">All groups are combined with AND. Inside each group, conditions use the group's operator.</p>
+                            <div id="entry-rules-list" class="space-y-4">
+                                <!-- Injected dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exit Rules Tab -->
+                    <div id="builder-exit" class="builder-section hidden space-y-6">
+                        <div class="glass rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-semibold">Exit Rules</h3>
+                                <button onclick="addRuleGroup('exit')" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">+ Add Condition Group</button>
+                            </div>
+                            <div id="exit-rules-list" class="space-y-4">
+                                <!-- Injected dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Risk Management Tab -->
+                    <div id="builder-risk" class="builder-section hidden space-y-6">
+                        <div class="glass rounded-xl p-6">
+                            <h3 class="font-semibold mb-4">Risk Management</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm text-slate-400 mb-2">Stop Loss (%)</label>
+                                    <input type="number" id="risk-sl" value="0" min="0" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors mono">
+                                    <p class="text-xs text-slate-500 mt-1">0 = disabled</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-slate-400 mb-2">Take Profit (%)</label>
+                                    <input type="number" id="risk-tp" value="0" min="0" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors mono">
+                                    <p class="text-xs text-slate-500 mt-1">0 = disabled</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-slate-400 mb-2">Trailing Stop (%)</label>
+                                    <input type="number" id="risk-ts" value="0" min="0" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors mono">
+                                    <p class="text-xs text-slate-500 mt-1">0 = disabled</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button onclick="saveCustomStrategy()" class="flex-1 py-3.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-all">
+                            <i class="fa-solid fa-save mr-2"></i>Save Strategy
+                        </button>
+                        <button onclick="runCustomBacktest()" id="run-custom-backtest-btn" class="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-blue-600/25 transition-all transform hover:scale-[1.02]">
+                            <i class="fa-solid fa-play mr-2"></i>Run Backtest
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="results" class="section space-y-6">
+                    <div id="results-empty" class="glass rounded-xl p-12 text-center">
+                        <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-chart-line text-slate-400 text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold mb-2">No results yet</h3>
+                        <p class="text-slate-400 text-sm mb-6">Build a strategy and run a backtest to see detailed analytics.</p>
+                        <button onclick="showSection('builder')" class="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">Go to Strategy Builder</button>
+                    </div>
+
+                    <div id="results-content" class="hidden space-y-6">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <span id="res-data-source" class="hidden px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">Synthetic Data</span>
+                            <span id="res-strategy" class="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">Strategy</span>
+                            <span id="res-symbol" class="px-3 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300 border border-slate-600">AAPL</span>
+                            <span id="res-period" class="px-3 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300 border border-slate-600">2020 - 2024</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div class="glass rounded-xl p-5 text-center">
+                                <p class="text-xs text-slate-400 mb-1">Total Return</p>
+                                <p id="res-total-return" class="text-2xl font-bold mono">-</p>
+                            </div>
+                            <div class="glass rounded-xl p-5 text-center">
+                                <p class="text-xs text-slate-400 mb-1">Annual Return</p>
+                                <p id="res-annual-return" class="text-2xl font-bold mono">-</p>
+                            </div>
+                            <div class="glass rounded-xl p-5 text-center">
+                                <p class="text-xs text-slate-400 mb-1">Max Drawdown</p>
+                                <p id="res-max-drawdown" class="text-2xl font-bold mono">-</p>
+                            </div>
+                            <div class="glass rounded-xl p-5 text-center">
+                                <p class="text-xs text-slate-400 mb-1">Sharpe Ratio</p>
+                                <p id="res-sharpe" class="text-2xl font-bold mono">-</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="lg:col-span-2 glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Equity Curve vs Benchmark</h3>
+                                <div class="h-72"><canvas id="resultsEquityChart"></canvas></div>
+                            </div>
+                            <div class="glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Monthly Returns</h3>
+                                <div class="h-72"><canvas id="monthlyReturnsChart"></canvas></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="lg:col-span-2 glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Performance Metrics</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2" id="performance-metrics">
+                                    <!-- Injected dynamically -->
+                                </div>
+                            </div>
+                            <div class="glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Trade Distribution</h3>
+                                <div class="h-64 flex items-center justify-center"><canvas id="tradeDistributionChart"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div id="charts" class="section space-y-6">
+                    <div id="charts-empty" class="glass rounded-xl p-12 text-center">
+                        <p class="text-slate-400">Run a backtest to populate advanced charts.</p>
+                    </div>
+                    <div id="charts-content" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="glass rounded-xl p-6">
+                            <h3 class="font-semibold mb-4">Price with Indicators</h3>
+                            <div class="h-72"><canvas id="priceChart"></canvas></div>
+                        </div>
+                        <div class="glass rounded-xl p-6">
+                            <h3 class="font-semibold mb-4">Drawdown Analysis</h3>
+                            <div class="h-72"><canvas id="drawdownChart"></canvas></div>
+                        </div>
+                        <div class="glass rounded-xl p-6">
+                            <h3 class="font-semibold mb-4">Daily Returns</h3>
+                            <div class="h-72"><canvas id="dailyReturnsChart"></canvas></div>
+                        </div>
+                        <div class="glass rounded-xl p-6">
+                            <h3 class="font-semibold mb-4">Return Distribution</h3>
+                            <div class="h-72"><canvas id="returnDistributionChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Section -->
+                <div id="analytics" class="section space-y-6">
+                    <div id="analytics-empty" class="glass rounded-xl p-12 text-center">
+                        <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-chart-pie text-slate-400 text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold mb-2">No analytics yet</h3>
+                        <p class="text-slate-400 text-sm mb-6">Run a backtest to see professional analytics.</p>
+                        <button onclick="showSection('builder')" class="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">Go to Strategy Builder</button>
+                    </div>
+
+                    <div id="analytics-content" class="hidden space-y-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Equity Curve</h3>
+                                <div class="h-72"><canvas id="analyticsEquityChart"></canvas></div>
+                            </div>
+                            <div class="glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Drawdown Curve</h3>
+                                <div class="h-72"><canvas id="analyticsDrawdownChart"></canvas></div>
+                            </div>
+                        </div>
+
+                        <div class="glass rounded-xl p-6">
+                            <h3 class="font-semibold mb-4">Monthly Returns Heatmap</h3>
+                            <div id="monthlyHeatmap" class="overflow-x-auto"></div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Rolling Sharpe Ratio (252D)</h3>
+                                <div class="h-72"><canvas id="rollingSharpeChart"></canvas></div>
+                            </div>
+                            <div class="glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Rolling Returns (90D)</h3>
+                                <div class="h-72"><canvas id="rollingReturnsChart"></canvas></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Annual Returns</h3>
+                                <div class="h-72"><canvas id="annualReturnsChart"></canvas></div>
+                            </div>
+                            <div class="glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Return Distribution</h3>
+                                <div class="h-72"><canvas id="analyticsReturnDistChart"></canvas></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Trade Distribution</h3>
+                                <div class="h-64 flex items-center justify-center"><canvas id="analyticsTradeDistChart"></canvas></div>
+                            </div>
+                            <div class="glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Holding Time Analysis</h3>
+                                <div class="h-64"><canvas id="holdingTimeChart"></canvas></div>
+                            </div>
+                            <div class="glass rounded-xl p-6">
+                                <h3 class="font-semibold mb-4">Win/Loss Streak</h3>
+                                <div class="space-y-3" id="streak-metrics">
+                                    <!-- Injected dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glass rounded-xl p-6">
+                            <h3 class="font-semibold mb-4">Risk Analysis</h3>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" id="risk-metrics">
+                                <!-- Injected dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trades Section -->
+                <div id="trades" class="section space-y-6">
+                    <div id="trades-empty" class="glass rounded-xl p-12 text-center">
+                        <p class="text-slate-400">No trades to display yet.</p>
+                    </div>
+                    <div id="trades-content" class="hidden glass rounded-xl overflow-hidden">
+                        <div class="p-6 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <h3 class="font-semibold">Complete Trade Log</h3>
+                                <p id="trades-summary" class="text-sm text-slate-400">Loading...</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <select id="trade-filter-side" onchange="loadTradesPage(currentTradeBacktestId, 1)" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+                                    <option value="">All Sides</option>
+                                    <option value="Long">Long</option>
+                                    <option value="Short">Short</option>
+                                </select>
+                                <button onclick="exportTrades()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm transition-colors">Export CSV</button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-slate-900/50 text-slate-400">
+                                    <tr>
+                                        <th class="text-left px-6 py-3 font-medium">#</th>
+                                        <th class="text-left px-6 py-3 font-medium">Entry Date</th>
+                                        <th class="text-left px-6 py-3 font-medium">Exit Date</th>
+                                        <th class="text-left px-6 py-3 font-medium">Side</th>
+                                        <th class="text-left px-6 py-3 font-medium">Status</th>
+                                        <th class="text-right px-6 py-3 font-medium">Size</th>
+                                        <th class="text-right px-6 py-3 font-medium">Entry</th>
+                                        <th class="text-right px-6 py-3 font-medium">Exit</th>
+                                        <th class="text-right px-6 py-3 font-medium">P&L</th>
+                                        <th class="text-right px-6 py-3 font-medium">Return</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="trades-body" class="divide-y divide-slate-800"></tbody>
+                            </table>
+                        </div>
+                        <div class="p-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <span id="trades-pagination-info" class="text-sm text-slate-400"></span>
+                            <div class="flex gap-2" id="trades-pagination-controls">
+                                <!-- Injected dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Backtest Running Modal -->
+    <div id="backtest-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="glass rounded-2xl p-8 max-w-md w-full mx-4 text-center">
+            <div class="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-circle-notch fa-spin text-blue-400 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">Running Backtest</h3>
+            <p class="text-slate-400 text-sm mb-6">Downloading data and running vectorbt simulation...</p>
+            <div class="w-full bg-slate-800 rounded-full h-2 mb-2 overflow-hidden">
+                <div id="progress-bar" class="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="progress-text" class="text-sm text-slate-400 mono">0%</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin.includes('localhost:8000') ? '' : 'http://localhost:8000';
+        let strategies = {};
+        let symbols = [];
+        let currentBacktest = null;
+        let charts = {};
+        let lastBacktests = [];
+
+        // ----------------------------
+        // API helpers
+        // ----------------------------
+        async function apiGet(path) {
+            const res = await fetch(API_BASE + path);
+            if (!res.ok) throw new Error(await res.text());
+            return res.json();
+        }
+
+        async function apiPost(path, body) {
+            const res = await fetch(API_BASE + path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error(await res.text());
+            return res.json();
+        }
+
+        function showAlert(message, type = 'error') {
+            const alert = document.getElementById('alert');
+            alert.classList.remove('hidden', 'bg-emerald-500/10', 'border-emerald-500/20', 'text-emerald-400', 'bg-rose-500/10', 'border-rose-500/20', 'text-rose-400');
+            if (type === 'success') {
+                alert.classList.add('bg-emerald-500/10', 'border-emerald-500/20', 'text-emerald-400');
+            } else {
+                alert.classList.add('bg-rose-500/10', 'border-rose-500/20', 'text-rose-400');
+            }
+            alert.textContent = message;
+            setTimeout(() => alert.classList.add('hidden'), 6000);
+        }
+
+        // ----------------------------
+        // Initialization
+        // ----------------------------
+        async function init() {
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.borderColor = '#1e293b';
+            Chart.defaults.font.family = 'Inter';
+
+            try {
+                const health = await apiGet('/api/health');
+                document.getElementById('backend-status').textContent = health.engine || 'Connected';
+                document.getElementById('backend-status').className = 'text-emerald-400';
+            } catch (err) {
+                document.getElementById('backend-status').textContent = 'Offline';
+                document.getElementById('backend-status').className = 'text-rose-400';
+                showAlert('Backend is not reachable. Start it with: uvicorn main:app --reload', 'error');
+                return;
+            }
+
+            try {
+                const symRes = await apiGet('/api/symbols');
+                symbols = symRes.symbols;
+                populateSymbols();
+                initBuilder();
+                await loadSavedStrategies();
+                await loadRecentBacktests();
+                initEmptyCharts();
+            } catch (err) {
+                showAlert('Failed to load initial data: ' + err.message);
+            }
+        }
+
+        function populateSymbols() {
+            const select = document.getElementById('symbol-select');
+            select.innerHTML = '<option value="" disabled selected>Choose a symbol</option>';
+            for (const sym of symbols) {
+                const opt = document.createElement('option');
+                opt.value = sym.ticker;
+                opt.textContent = `${sym.ticker} — ${sym.name}`;
+                select.appendChild(opt);
+            }
+            select.value = 'AAPL';
+        }
+
+        // ----------------------------
+        // No-code Strategy Builder
+        // ----------------------------
+        const INDICATOR_TYPES = {
+            sma: { label: 'SMA', params: [{key: 'period', label: 'Period', default: 20, type: 'int'}], outputs: ['value'] },
+            ema: { label: 'EMA', params: [{key: 'period', label: 'Period', default: 20, type: 'int'}], outputs: ['value'] },
+            rsi: { label: 'RSI', params: [{key: 'period', label: 'Period', default: 14, type: 'int'}], outputs: ['value'] },
+            macd: { label: 'MACD', params: [{key: 'fast', label: 'Fast', default: 12, type: 'int'}, {key: 'slow', label: 'Slow', default: 26, type: 'int'}, {key: 'signal', label: 'Signal', default: 9, type: 'int'}], outputs: ['macd', 'signal', 'hist'] },
+            supertrend: { label: 'Supertrend', params: [{key: 'period', label: 'Period', default: 10, type: 'int'}, {key: 'multiplier', label: 'Multiplier', default: 3.0, type: 'float'}], outputs: ['value', 'direction'] },
+            vwap: { label: 'VWAP', params: [], outputs: ['value'] },
+            bbands: { label: 'Bollinger Bands', params: [{key: 'period', label: 'Period', default: 20, type: 'int'}, {key: 'std', label: 'Std Dev', default: 2.0, type: 'float'}], outputs: ['upper', 'middle', 'lower'] },
+            atr: { label: 'ATR', params: [{key: 'period', label: 'Period', default: 14, type: 'int'}], outputs: ['value'] },
+            adx: { label: 'ADX', params: [{key: 'period', label: 'Period', default: 14, type: 'int'}], outputs: ['value'] },
+        };
+
+        const OPERATORS = [
+            { value: '>', label: '>' },
+            { value: '<', label: '<' },
+            { value: '>=', label: '>=' },
+            { value: '<=', label: '<=' },
+            { value: '==', label: '==' },
+            { value: 'crosses_above', label: 'crosses above' },
+            { value: 'crosses_below', label: 'crosses below' },
+        ];
+
+        let builderIndicators = [];
+        let builderEntryGroups = [];
+        let builderExitGroups = [];
+
+        function initBuilder() {
+            // Default starter strategy
+            builderIndicators = [
+                { id: 'ind_1', type: 'sma', name: 'sma_fast', params: { period: 50 } },
+                { id: 'ind_2', type: 'sma', name: 'sma_slow', params: { period: 200 } },
+                { id: 'ind_3', type: 'rsi', name: 'rsi14', params: { period: 14 } }
+            ];
+            builderEntryGroups = [
+                { id: 'eg_1', operator: 'AND', conditions: [
+                    { id: 'ec_1', left: { type: 'indicator', name: 'sma_fast' }, op: 'crosses_above', right: { type: 'indicator', name: 'sma_slow' } },
+                    { id: 'ec_2', left: { type: 'indicator', name: 'rsi14' }, op: '>', right: { type: 'value', value: 50 } }
+                ]}
+            ];
+            builderExitGroups = [
+                { id: 'xg_1', operator: 'OR', conditions: [
+                    { id: 'xc_1', left: { type: 'indicator', name: 'sma_fast' }, op: 'crosses_below', right: { type: 'indicator', name: 'sma_slow' } },
+                    { id: 'xc_2', left: { type: 'indicator', name: 'rsi14' }, op: '>', right: { type: 'value', value: 80 } }
+                ]}
+            ];
+            renderIndicators();
+            renderRuleGroups('entry');
+            renderRuleGroups('exit');
+            updateIndicatorOutputs();
+        }
+
+        function showBuilderTab(tabId) {
+            document.querySelectorAll('.builder-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.builder-tab').forEach(t => {
+                t.classList.remove('active', 'bg-blue-600', 'text-white');
+                t.classList.add('text-slate-300');
+            });
+            document.getElementById(tabId).classList.add('active');
+            const tabBtn = document.getElementById('tab-' + tabId);
+            tabBtn.classList.add('active', 'bg-blue-600', 'text-white');
+            tabBtn.classList.remove('text-slate-300');
+        }
+
+        function addIndicator() {
+            const id = 'ind_' + Date.now();
+            builderIndicators.push({ id, type: 'sma', name: 'sma_' + builderIndicators.length, params: { period: 20 } });
+            renderIndicators();
+        }
+
+        function removeIndicator(id) {
+            builderIndicators = builderIndicators.filter(i => i.id !== id);
+            renderIndicators();
+            updateIndicatorOutputs();
+        }
+
+        function updateIndicatorFromForm(id) {
+            const ind = builderIndicators.find(i => i.id === id);
+            if (!ind) return;
+            ind.type = document.getElementById(`ind-type-${id}`).value;
+            ind.name = document.getElementById(`ind-name-${id}`).value;
+            ind.params = {};
+            const meta = INDICATOR_TYPES[ind.type];
+            for (const p of meta.params) {
+                const val = document.getElementById(`ind-param-${id}-${p.key}`).value;
+                ind.params[p.key] = p.type === 'float' ? parseFloat(val) : parseInt(val);
+            }
+            updateIndicatorOutputs();
+        }
+
+        function renderIndicators() {
+            const container = document.getElementById('indicators-list');
+            if (!builderIndicators.length) {
+                container.innerHTML = '<p class="text-sm text-slate-500">No indicators added yet.</p>';
+                updateIndicatorOutputs();
+                return;
+            }
+            container.innerHTML = builderIndicators.map(ind => {
+                const meta = INDICATOR_TYPES[ind.type];
+                const paramsHtml = meta.params.map(p => `
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">${p.label}</label>
+                        <input type="number" id="ind-param-${ind.id}-${p.key}" value="${ind.params[p.key] ?? p.default}" step="${p.type === 'float' ? '0.1' : '1'}"
+                            onchange="updateIndicatorFromForm('${ind.id}')"
+                            class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors mono">
+                    </div>
+                `).join('');
+                const typeOptions = Object.entries(INDICATOR_TYPES).map(([key, val]) => `<option value="${key}" ${ind.type === key ? 'selected' : ''}>${val.label}</option>`).join('');
+                return `
+                    <div class="p-4 bg-slate-900/50 rounded-lg border border-slate-800">
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Type</label>
+                                <select id="ind-type-${ind.id}" onchange="updateIndicatorFromForm('${ind.id}')" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors">${typeOptions}</select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Name</label>
+                                <input type="text" id="ind-name-${ind.id}" value="${ind.name}" onchange="updateIndicatorFromForm('${ind.id}')" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors mono">
+                            </div>
+                            ${paramsHtml}
+                            <div>
+                                <button onclick="removeIndicator('${ind.id}')" class="w-full px-3 py-2 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-sm transition-colors"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            updateIndicatorOutputs();
+        }
+
+        function updateIndicatorOutputs() {
+            const outputs = [];
+            for (const ind of builderIndicators) {
+                const meta = INDICATOR_TYPES[ind.type];
+                for (const out of meta.outputs) {
+                    outputs.push(out === 'value' ? ind.name : `${ind.name}_${out}`);
+                }
+            }
+            const box = document.getElementById('indicator-outputs');
+            const text = document.getElementById('indicator-outputs-text');
+            if (outputs.length) {
+                box.classList.remove('hidden');
+                text.textContent = outputs.join(', ');
+            } else {
+                box.classList.add('hidden');
+            }
+        }
+
+        function getIndicatorOptions() {
+            const options = [];
+            for (const ind of builderIndicators) {
+                const meta = INDICATOR_TYPES[ind.type];
+                for (const out of meta.outputs) {
+                    const val = out === 'value' ? ind.name : `${ind.name}_${out}`;
+                    options.push({ value: val, label: val });
+                }
+            }
+            return options;
+        }
+
+        function addRuleGroup(type) {
+            const list = type === 'entry' ? builderEntryGroups : builderExitGroups;
+            list.push({ id: (type === 'entry' ? 'eg_' : 'xg_') + Date.now(), operator: 'AND', conditions: [] });
+            renderRuleGroups(type);
+        }
+
+        function removeRuleGroup(type, groupId) {
+            if (type === 'entry') builderEntryGroups = builderEntryGroups.filter(g => g.id !== groupId);
+            else builderExitGroups = builderExitGroups.filter(g => g.id !== groupId);
+            renderRuleGroups(type);
+        }
+
+        function addCondition(type, groupId) {
+            const list = type === 'entry' ? builderEntryGroups : builderExitGroups;
+            const group = list.find(g => g.id === groupId);
+            if (!group) return;
+            group.conditions.push({ id: 'c_' + Date.now(), left: { type: 'indicator', name: '' }, op: '>', right: { type: 'value', value: 0 } });
+            renderRuleGroups(type);
+        }
+
+        function removeCondition(type, groupId, conditionId) {
+            const list = type === 'entry' ? builderEntryGroups : builderExitGroups;
+            const group = list.find(g => g.id === groupId);
+            if (!group) return;
+            group.conditions = group.conditions.filter(c => c.id !== conditionId);
+            renderRuleGroups(type);
+        }
+
+        function updateRuleGroupOperator(type, groupId, operator) {
+            const list = type === 'entry' ? builderEntryGroups : builderExitGroups;
+            const group = list.find(g => g.id === groupId);
+            if (group) group.operator = operator;
+        }
+
+        function updateCondition(type, groupId, conditionId, field, subfield, value) {
+            const list = type === 'entry' ? builderEntryGroups : builderExitGroups;
+            const group = list.find(g => g.id === groupId);
+            const cond = group?.conditions.find(c => c.id === conditionId);
+            if (!cond) return;
+            if (field === 'op') {
+                cond.op = value;
+            } else {
+                cond[field][subfield] = value;
+                if (subfield === 'type') {
+                    if (value === 'value') cond[field].value = 0;
+                    else if (value === 'ohlc') cond[field].name = 'close';
+                    else if (value === 'indicator') cond[field].name = getIndicatorOptions()[0]?.value || '';
+                }
+            }
+            renderRuleGroups(type);
+        }
+
+        function renderOperand(prefix, operand, type) {
+            const indicatorOptions = getIndicatorOptions().map(o => `<option value="${o.value}" ${operand.name === o.value ? 'selected' : ''}>${o.label}</option>`).join('');
+            const ohlcOptions = ['open', 'high', 'low', 'close'].map(o => `<option value="${o}" ${operand.name === o ? 'selected' : ''}>${o.toUpperCase()}</option>`).join('');
+            const typeSelect = `
+                <select onchange="updateCondition('${type}', '${prefix.group}', '${prefix.cond}', '${prefix.side}', 'type', this.value)" class="bg-slate-900 border border-slate-700 rounded px-2 py-2 text-sm focus:outline-none focus:border-blue-500">
+                    <option value="indicator" ${operand.type === 'indicator' ? 'selected' : ''}>Indicator</option>
+                    <option value="value" ${operand.type === 'value' ? 'selected' : ''}>Value</option>
+                    <option value="ohlc" ${operand.type === 'ohlc' ? 'selected' : ''}>OHLC</option>
+                </select>
+            `;
+            let valueInput = '';
+            if (operand.type === 'indicator') {
+                valueInput = `<select onchange="updateCondition('${type}', '${prefix.group}', '${prefix.cond}', '${prefix.side}', 'name', this.value)" class="bg-slate-900 border border-slate-700 rounded px-2 py-2 text-sm focus:outline-none focus:border-blue-500 mono">${indicatorOptions || '<option value="">No indicators</option>'}</select>`;
+            } else if (operand.type === 'ohlc') {
+                valueInput = `<select onchange="updateCondition('${type}', '${prefix.group}', '${prefix.cond}', '${prefix.side}', 'name', this.value)" class="bg-slate-900 border border-slate-700 rounded px-2 py-2 text-sm focus:outline-none focus:border-blue-500 mono">${ohlcOptions}</select>`;
+            } else {
+                valueInput = `<input type="number" value="${operand.value ?? 0}" onchange="updateCondition('${type}', '${prefix.group}', '${prefix.cond}', '${prefix.side}', 'value', parseFloat(this.value))" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-2 text-sm focus:outline-none focus:border-blue-500 mono">`;
+            }
+            return `<div class="flex gap-2">${typeSelect}${valueInput}</div>`;
+        }
+
+        function renderRuleGroups(type) {
+            const container = document.getElementById(type + '-rules-list');
+            const list = type === 'entry' ? builderEntryGroups : builderExitGroups;
+            if (!list.length) {
+                container.innerHTML = '<p class="text-sm text-slate-500">No ' + type + ' rules added yet.</p>';
+                return;
+            }
+            container.innerHTML = list.map(group => {
+                const opOptions = ['AND', 'OR'].map(op => `<option value="${op}" ${group.operator === op ? 'selected' : ''}>${op}</option>`).join('');
+                const conditionsHtml = group.conditions.map(cond => {
+                    const opSelect = `<select onchange="updateCondition('${type}', '${group.id}', '${cond.id}', 'op', null, this.value)" class="bg-slate-900 border border-slate-700 rounded px-2 py-2 text-sm focus:outline-none focus:border-blue-500">${OPERATORS.map(o => `<option value="${o.value}" ${cond.op === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}</select>`;
+                    const leftHtml = renderOperand({ group: group.id, cond: cond.id, side: 'left' }, cond.left, type);
+                    const rightHtml = renderOperand({ group: group.id, cond: cond.id, side: 'right' }, cond.right, type);
+                    return `
+                        <div class="condition-row p-3 bg-slate-900/30 rounded-lg border border-slate-800/50">
+                            ${leftHtml}
+                            ${opSelect}
+                            ${rightHtml}
+                            <button onclick="removeCondition('${type}', '${group.id}', '${cond.id}')" class="px-3 py-2 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-sm"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `;
+                }).join('');
+                return `
+                    <div class="p-4 bg-slate-900/50 rounded-lg border border-slate-800">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm text-slate-400">Group operator:</span>
+                                <select onchange="updateRuleGroupOperator('${type}', '${group.id}', this.value)" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-500">${opOptions}</select>
+                            </div>
+                            <button onclick="removeRuleGroup('${type}', '${group.id}')" class="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-sm">Remove Group</button>
+                        </div>
+                        <div class="space-y-2">${conditionsHtml || '<p class="text-xs text-slate-500">No conditions in this group.</p>'}</div>
+                        <button onclick="addCondition('${type}', '${group.id}')" class="mt-3 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm transition-colors">+ Add Condition</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function buildCustomStrategy() {
+            const name = document.getElementById('custom-strategy-name').value;
+            const initialCapital = parseFloat(document.getElementById('initial-capital').value);
+            const indicators = builderIndicators.map(i => ({ type: i.type, name: i.name, params: i.params }));
+            const entry_rules = builderEntryGroups.map(g => ({ operator: g.operator, conditions: g.conditions.map(c => ({ left: c.left, op: c.op, right: c.right })) }));
+            const exit_rules = builderExitGroups.map(g => ({ operator: g.operator, conditions: g.conditions.map(c => ({ left: c.left, op: c.op, right: c.right })) }));
+            const sl = parseFloat(document.getElementById('risk-sl').value);
+            const tp = parseFloat(document.getElementById('risk-tp').value);
+            const ts = parseFloat(document.getElementById('risk-ts').value);
+            return {
+                name,
+                initial_capital: initialCapital,
+                indicators,
+                entry_rules,
+                exit_rules,
+                stop_loss: sl > 0 ? { type: 'percent', value: sl } : null,
+                take_profit: tp > 0 ? { type: 'percent', value: tp } : null,
+                trailing_stop: ts > 0 ? { type: 'percent', value: ts } : null
+            };
+        }
+
+        async function saveCustomStrategy() {
+            const strategy = buildCustomStrategy();
+            if (strategy.indicators.length === 0) {
+                showAlert('Add at least one indicator.');
+                return;
+            }
+            try {
+                const result = await apiPost('/api/strategies/custom', strategy);
+                showAlert('Strategy saved: ' + result.name, 'success');
+                await loadSavedStrategies();
+            } catch (err) {
+                showAlert('Failed to save strategy: ' + err.message);
+            }
+        }
+
+        async function loadSavedStrategies() {
+            try {
+                const items = await apiGet('/api/strategies/custom');
+                const container = document.getElementById('saved-strategies-list');
+                if (!items.length) {
+                    container.innerHTML = '<p class="text-sm text-slate-500">No saved strategies yet.</p>';
+                    return;
+                }
+                container.innerHTML = items.map(item => `
+                    <div class="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-800">
+                        <div>
+                            <p class="text-sm font-medium">${item.name}</p>
+                            <p class="text-xs text-slate-400">${item.created_at}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="loadSavedStrategy('${item.id}')" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs">Load</button>
+                            <button onclick="deleteSavedStrategy('${item.id}')" class="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Failed to load saved strategies', err);
+            }
+        }
+
+        async function loadSavedStrategy(id) {
+            try {
+                const item = await apiGet('/api/strategies/custom/' + id);
+                const config = item.config;
+                document.getElementById('custom-strategy-name').value = config.name;
+                document.getElementById('initial-capital').value = config.initial_capital;
+                document.getElementById('risk-sl').value = config.stop_loss?.value || 0;
+                document.getElementById('risk-tp').value = config.take_profit?.value || 0;
+                document.getElementById('risk-ts').value = config.trailing_stop?.value || 0;
+                builderIndicators = (config.indicators || []).map(i => ({ ...i, id: 'ind_' + Math.random().toString(36).substr(2, 9) }));
+                builderEntryGroups = (config.entry_rules || []).map(g => ({ ...g, id: 'eg_' + Math.random().toString(36).substr(2, 9), conditions: g.conditions.map(c => ({ ...c, id: 'c_' + Math.random().toString(36).substr(2, 9) })) }));
+                builderExitGroups = (config.exit_rules || []).map(g => ({ ...g, id: 'xg_' + Math.random().toString(36).substr(2, 9), conditions: g.conditions.map(c => ({ ...c, id: 'c_' + Math.random().toString(36).substr(2, 9) })) }));
+                renderIndicators();
+                renderRuleGroups('entry');
+                renderRuleGroups('exit');
+                showBuilderTab('builder-indicators');
+                showAlert('Strategy loaded: ' + config.name, 'success');
+            } catch (err) {
+                showAlert('Failed to load strategy: ' + err.message);
+            }
+        }
+
+        async function deleteSavedStrategy(id) {
+            if (!confirm('Delete this strategy?')) return;
+            try {
+                await fetch(API_BASE + '/api/strategies/custom/' + id, { method: 'DELETE' });
+                await loadSavedStrategies();
+            } catch (err) {
+                showAlert('Failed to delete strategy: ' + err.message);
+            }
+        }
+
+        async function runCustomBacktest() {
+            const symbol = document.getElementById('symbol-select').value;
+            const start = document.getElementById('start-date').value;
+            const end = document.getElementById('end-date').value;
+            const interval = document.getElementById('interval-select').value;
+            const strategy = buildCustomStrategy();
+
+            if (!symbol || !start || !end) {
+                showAlert('Please fill in all required fields in Settings.');
+                return;
+            }
+            if (strategy.indicators.length === 0) {
+                showAlert('Add at least one indicator.');
+                return;
+            }
+
+            const modal = document.getElementById('backtest-modal');
+            const bar = document.getElementById('progress-bar');
+            const text = document.getElementById('progress-text');
+            const btn = document.getElementById('run-custom-backtest-btn');
+            modal.classList.remove('hidden');
+            btn.disabled = true;
+
+            let progress = 0;
+            const intervalId = setInterval(() => {
+                progress = Math.min(progress + Math.random() * 15, 95);
+                bar.style.width = progress + '%';
+                text.textContent = Math.round(progress) + '%';
+            }, 300);
+
+            try {
+                const result = await apiPost('/api/backtest/custom', {
+                    strategy,
+                    symbol,
+                    start,
+                    end,
+                    interval
+                });
+                clearInterval(intervalId);
+                bar.style.width = '100%';
+                text.textContent = '100%';
+                currentBacktest = result;
+                setTimeout(async () => {
+                    modal.classList.add('hidden');
+                    bar.style.width = '0%';
+                    text.textContent = '0%';
+                    btn.disabled = false;
+                    await renderResults(result);
+                    showSection('results');
+                    loadRecentBacktests();
+                }, 500);
+            } catch (err) {
+                clearInterval(intervalId);
+                modal.classList.add('hidden');
+                btn.disabled = false;
+                showAlert('Backtest failed: ' + err.message);
+            }
+        }
+
+        // ----------------------------
+        // Results rendering
+        // ----------------------------
+        function formatPct(value) {
+            const v = parseFloat(value);
+            if (!isFinite(v)) return '—';
+            const sign = v >= 0 ? '+' : '';
+            return `${sign}${v.toFixed(2)}%`;
+        }
+
+        function formatNum(value, decimals = 2) {
+            const v = parseFloat(value);
+            if (!isFinite(v)) return '—';
+            return v.toFixed(decimals);
+        }
+
+        async function renderResults(result) {
+            document.getElementById('results-empty').classList.add('hidden');
+            document.getElementById('results-content').classList.remove('hidden');
+            document.getElementById('charts-empty').classList.add('hidden');
+            document.getElementById('charts-content').classList.remove('hidden');
+            document.getElementById('trades-empty').classList.add('hidden');
+            document.getElementById('trades-content').classList.remove('hidden');
+
+            // Badges
+            document.getElementById('res-strategy').textContent = result.strategy || result.name || 'Custom Strategy';
+            document.getElementById('res-symbol').textContent = result.symbol;
+            document.getElementById('res-period').textContent = `${result.start} → ${result.end}`;
+            const sourceBadge = document.getElementById('res-data-source');
+            if (result.data_source === 'synthetic') {
+                sourceBadge.classList.remove('hidden');
+                sourceBadge.textContent = 'Synthetic Data';
+            } else {
+                sourceBadge.classList.add('hidden');
+            }
+
+            const totalRet = document.getElementById('res-total-return');
+            totalRet.textContent = formatPct(result.total_return);
+            totalRet.className = `text-2xl font-bold mono ${result.total_return >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+            const annRet = document.getElementById('res-annual-return');
+            annRet.textContent = formatPct(result.annual_return);
+            annRet.className = `text-2xl font-bold mono ${result.annual_return >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+            const maxDD = document.getElementById('res-max-drawdown');
+            maxDD.textContent = formatPct(result.max_drawdown);
+            maxDD.className = 'text-2xl font-bold mono text-rose-400';
+
+            document.getElementById('res-sharpe').textContent = formatNum(result.sharpe_ratio);
+
+            // Performance metrics list
+            const metricRow = (label, value, colorClass = '') => `
+                <div class="flex justify-between py-2 border-b border-slate-800">
+                    <span class="text-slate-400 text-sm">${label}</span>
+                    <span class="mono ${colorClass}">${value}</span>
+                </div>`;
+            document.getElementById('performance-metrics').innerHTML = `
+                ${metricRow('Number of Trades', result.total_trades)}
+                ${metricRow('Winning Trades', result.winning_trades, 'text-emerald-400')}
+                ${metricRow('Losing Trades', result.losing_trades, 'text-rose-400')}
+                ${metricRow('Win Rate', formatPct(result.win_rate))}
+                ${metricRow('Best Trade', result.best_trade !== undefined ? formatPct(result.best_trade) : '—', 'text-emerald-400')}
+                ${metricRow('Worst Trade', result.worst_trade !== undefined ? formatPct(result.worst_trade) : '—', 'text-rose-400')}
+                ${metricRow('Average Win', formatPct(result.avg_win), 'text-emerald-400')}
+                ${metricRow('Average Loss', formatPct(result.avg_loss), 'text-rose-400')}
+                ${metricRow('Avg Trade Duration', formatNum(result.avg_trade_duration, 1) + ' days')}
+                ${metricRow('Profit Factor', result.profit_factor ? formatNum(result.profit_factor, 2) : '—')}
+                ${metricRow('Expectancy', '$' + formatNum(result.expectancy, 2))}
+                ${metricRow('Volatility (Ann.)', result.volatility !== undefined ? formatPct(result.volatility) : '—')}
+                ${metricRow('Downside Deviation', result.downside_deviation !== undefined ? formatPct(result.downside_deviation) : '—')}
+                ${metricRow('VaR 95%', result.var_95 !== undefined ? formatPct(result.var_95) : '—', 'text-rose-400')}
+                ${metricRow('Sortino Ratio', result.sortino_ratio !== undefined ? formatNum(result.sortino_ratio) : '—')}
+                ${metricRow('Omega Ratio', result.omega_ratio !== undefined ? formatNum(result.omega_ratio) : '—')}
+                ${metricRow('Calmar Ratio', result.calmar_ratio !== undefined ? formatNum(result.calmar_ratio) : '—')}
+                ${metricRow('Beta', result.beta !== undefined ? formatNum(result.beta) : '—')}
+                ${metricRow('Alpha (Ann.)', result.alpha !== undefined ? formatPct(result.alpha) : '—')}
+                ${metricRow('Benchmark Return', result.benchmark_return !== undefined ? formatPct(result.benchmark_return) : '—')}
+            `;
+
+            renderCharts(result);
+            currentBacktest = result;
+            loadTradesPage(result.id, 1);
+
+            // Analytics
+            if (result.analytics) {
+                renderAnalytics(result.analytics);
+            } else {
+                try {
+                    const analytics = await apiGet(`/api/backtest/${result.id}/analytics`);
+                    renderAnalytics(analytics);
+                } catch (err) {
+                    console.error('Failed to load analytics', err);
+                }
+            }
+        }
+
+        function renderCharts(result) {
+            destroyCharts();
+
+            const equityLabels = result.equity_curve.map(d => d.date);
+            const equityValues = result.equity_curve.map(d => d.equity);
+
+            const benchmarkValues = result.benchmark_curve.map(
+            d => d.equity ?? d.value
+        );
+
+            const ddValues = result.drawdown_curve.map(
+            d => d.drawdown ?? d.value
+);
+
+            // Results equity vs benchmark
+            const resultsEquityCtx = document.getElementById('resultsEquityChart').getContext('2d');
+            charts.resultsEquity = new Chart(resultsEquityCtx, {
+                type: 'line',
+                data: {
+                    labels: equityLabels,
+                    datasets: [
+                        { label: 'Strategy', data: equityValues, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 },
+                        { label: 'Buy & Hold', data: benchmarkValues, borderColor: '#f59e0b', backgroundColor: 'transparent', borderDash: [5,5], tension: 0.4, borderWidth: 2, pointRadius: 0 }
+                    ]
+                },
+                options: chartOptions('$')
+            });
+
+            // Monthly returns
+            const monthlyCtx = document.getElementById('monthlyReturnsChart').getContext('2d');
+            const monthlyLabels = result.monthly_returns.map(d => d.month);
+            const monthlyValues = result.monthly_returns.map(d => d.return);
+            charts.monthly = new Chart(monthlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: monthlyLabels,
+                    datasets: [{ label: 'Return %', data: monthlyValues, backgroundColor: monthlyValues.map(v => v >= 0 ? '#10b981' : '#f43f5e'), borderRadius: 4 }]
+                },
+                options: chartOptions('%')
+            });
+
+            // Trade distribution
+            const tradeDistCtx = document.getElementById('tradeDistributionChart').getContext('2d');
+            charts.tradeDist = new Chart(tradeDistCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Winning', 'Losing'],
+                    datasets: [{ data: [result.trade_distribution.winning, result.trade_distribution.losing], backgroundColor: ['#10b981', '#f43f5e'], borderWidth: 0, hoverOffset: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } } }
+            });
+
+            // Price with indicators
+            if (result.price_with_indicators && result.price_with_indicators.length) {
+                const priceCtx = document.getElementById('priceChart').getContext('2d');
+                const priceLabels = result.price_with_indicators.map(d => d.date);
+                const priceValues = result.price_with_indicators.map(d => d.price);
+                const ind1 = result.price_with_indicators.map(d => d.indicator1);
+                const ind2 = result.price_with_indicators.map(d => d.indicator2);
+                const datasets = [{ label: 'Price', data: priceValues, borderColor: '#e2e8f0', borderWidth: 2, pointRadius: 0, tension: 0.1 }];
+                if (ind1.some(v => v !== null && v !== undefined)) {
+                    datasets.push({ label: 'Indicator 1', data: ind1, borderColor: '#3b82f6', borderWidth: 1.5, pointRadius: 0, tension: 0.4 });
+                }
+                if (ind2 && ind2.some(v => v !== null && v !== undefined)) {
+                    datasets.push({ label: 'Indicator 2', data: ind2, borderColor: '#f59e0b', borderWidth: 1.5, pointRadius: 0, tension: 0.4 });
+                }
+                charts.price = new Chart(priceCtx, { type: 'line', data: { labels: priceLabels, datasets }, options: chartOptions('$') });
+            }
+
+            // Drawdown
+            const drawdownCtx = document.getElementById('drawdownChart').getContext('2d');
+            const ddGradient = drawdownCtx.createLinearGradient(0, 0, 0, 280);
+            ddGradient.addColorStop(0, 'rgba(244, 63, 94, 0.4)');
+            ddGradient.addColorStop(1, 'rgba(244, 63, 94, 0)');
+            charts.drawdown = new Chart(drawdownCtx, {
+                type: 'line',
+                data: { labels: equityLabels, datasets: [{ label: 'Drawdown %', data: ddValues, borderColor: '#f43f5e', backgroundColor: ddGradient, fill: true, borderWidth: 2, pointRadius: 0, tension: 0.4 }] },
+                options: chartOptions('%')
+            });
+
+            // Daily returns
+            if (result.daily_returns && result.daily_returns.length) {
+                const dailyCtx = document.getElementById('dailyReturnsChart').getContext('2d');
+                const dailyLabels = result.daily_returns.map(d => d.date);
+                const dailyValues = result.daily_returns.map(d => d.return);
+                charts.daily = new Chart(dailyCtx, {
+                    type: 'bar',
+                    data: { labels: dailyLabels, datasets: [{ label: 'Daily Return %', data: dailyValues, backgroundColor: dailyValues.map(v => v >= 0 ? '#10b981' : '#f43f5e'), borderRadius: 2 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } }, y: { ticks: { callback: (val) => val.toFixed(1) + '%' } } } }
+                });
+            }
+
+            // Return distribution
+            if (result.return_distribution) {
+                const retDistCtx = document.getElementById('returnDistributionChart').getContext('2d');
+                charts.retDist = new Chart(retDistCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: result.return_distribution.labels,
+                        datasets: [{ label: 'Frequency', data: result.return_distribution.values, backgroundColor: result.return_distribution.values.map((_, i) => i < 3 ? '#f43f5e' : '#10b981'), borderRadius: 4 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#1e293b' } } } }
+                });
+            }
+        }
+
+        function computeRollingSharpe(values, window) {
+            const returns = [];
+            for (let i = 1; i < values.length; i++) {
+                returns.push((values[i] - values[i - 1]) / values[i - 1]);
+            }
+            const sharpe = [];
+            for (let i = 0; i < returns.length; i++) {
+                if (i < window - 1) { sharpe.push(null); continue; }
+                const slice = returns.slice(i - window + 1, i + 1);
+                const mean = slice.reduce((a, b) => a + b, 0) / slice.length;
+                const std = Math.sqrt(slice.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / slice.length) || 1e-9;
+                sharpe.push((mean / std) * Math.sqrt(252));
+            }
+            sharpe.unshift(null);
+            return sharpe;
+        }
+
+        function chartOptions(prefix) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { labels: { usePointStyle: true } } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } },
+                    y: { ticks: { callback: (val) => prefix === '$' ? '$' + (val / 1000).toFixed(0) + 'k' : val.toFixed(prefix === '%' ? 1 : 2) + prefix } }
+                }
+            };
+        }
+
+        function destroyCharts() {
+            Object.values(charts).forEach(c => c && c.destroy && c.destroy());
+            charts = {};
+        }
+
+        // ----------------------------
+        // Professional Analytics
+        // ----------------------------
+        let analyticsCharts = {};
+
+        function renderAnalytics(analytics) {
+            document.getElementById('analytics-empty').classList.add('hidden');
+            document.getElementById('analytics-content').classList.remove('hidden');
+
+            // Destroy previous analytics charts
+            Object.values(analyticsCharts).forEach(c => c && c.destroy && c.destroy());
+            analyticsCharts = {};
+
+            // Equity Curve
+            const equityCtx = document.getElementById('analyticsEquityChart').getContext('2d');
+            const equityGradient = equityCtx.createLinearGradient(0, 0, 0, 280);
+            equityGradient.addColorStop(0, 'rgba(59,130,246,0.3)');
+            equityGradient.addColorStop(1, 'rgba(59,130,246,0)');
+            analyticsCharts.equity = new Chart(equityCtx, {
+                type: 'line',
+                data: {
+                    labels: analytics.equity_curve.map(d => d.date),
+                    datasets: [{ label: 'Equity', data: analytics.equity_curve.map(d => d.value), borderColor: '#3b82f6', backgroundColor: equityGradient, fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 }]
+                },
+                options: chartOptions('$')
+            });
+
+            // Drawdown Curve
+            const ddCtx = document.getElementById('analyticsDrawdownChart').getContext('2d');
+            const ddGradient = ddCtx.createLinearGradient(0, 0, 0, 280);
+            ddGradient.addColorStop(0, 'rgba(244,63,94,0.4)');
+            ddGradient.addColorStop(1, 'rgba(244,63,94,0)');
+            analyticsCharts.drawdown = new Chart(ddCtx, {
+                type: 'line',
+                data: {
+                    labels: analytics.drawdown_curve.map(d => d.date),
+                    datasets: [{ label: 'Drawdown %', data: analytics.drawdown_curve.map(d => d.value), borderColor: '#f43f5e', backgroundColor: ddGradient, fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 }]
+                },
+                options: chartOptions('%')
+            });
+
+            // Monthly heatmap
+            renderMonthlyHeatmap(analytics.monthly_returns_heatmap);
+
+            // Rolling Sharpe
+            const sharpeCtx = document.getElementById('rollingSharpeChart').getContext('2d');
+            analyticsCharts.rollingSharpe = new Chart(sharpeCtx, {
+                type: 'line',
+                data: {
+                    labels: analytics.rolling_sharpe_252.map(d => d.date),
+                    datasets: [
+                        { label: '252D', data: analytics.rolling_sharpe_252.map(d => d.value), borderColor: '#8b5cf6', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.4 },
+                        { label: '90D', data: analytics.rolling_sharpe_90.map(d => d.value), borderColor: '#06b6d4', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.4 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { labels: { usePointStyle: true } } },
+                    scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } }, y: { ticks: { callback: (val) => val.toFixed(2) } } }
+                }
+            });
+
+            // Rolling Returns
+            const rrCtx = document.getElementById('rollingReturnsChart').getContext('2d');
+            analyticsCharts.rollingReturns = new Chart(rrCtx, {
+                type: 'line',
+                data: {
+                    labels: analytics.rolling_returns_90.map(d => d.date),
+                    datasets: [
+                        { label: '90D', data: analytics.rolling_returns_90.map(d => d.value), borderColor: '#f59e0b', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.4 },
+                        { label: '252D', data: analytics.rolling_returns_252.map(d => d.value), borderColor: '#10b981', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.4 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { labels: { usePointStyle: true } } },
+                    scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } }, y: { ticks: { callback: (val) => val.toFixed(1) + '%' } } }
+                }
+            });
+
+            // Annual Returns
+            const annualCtx = document.getElementById('annualReturnsChart').getContext('2d');
+            const annualValues = analytics.annual_returns.map(d => d.return);
+            analyticsCharts.annual = new Chart(annualCtx, {
+                type: 'bar',
+                data: {
+                    labels: analytics.annual_returns.map(d => d.year),
+                    datasets: [{ label: 'Annual Return %', data: annualValues, backgroundColor: annualValues.map(v => v >= 0 ? '#10b981' : '#f43f5e'), borderRadius: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { ticks: { callback: (val) => val.toFixed(1) + '%' } } } }
+            });
+
+            // Return Distribution
+            const retCtx = document.getElementById('analyticsReturnDistChart').getContext('2d');
+            analyticsCharts.retDist = new Chart(retCtx, {
+                type: 'bar',
+                data: {
+                    labels: analytics.return_distribution.labels,
+                    datasets: [{ label: 'Frequency', data: analytics.return_distribution.values, backgroundColor: analytics.return_distribution.values.map((_, i) => i < analytics.return_distribution.values.length / 2 ? '#f43f5e' : '#10b981'), borderRadius: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 9 } } }, y: { grid: { color: '#1e293b' } } } }
+            });
+
+            // Trade Distribution
+            const tdCtx = document.getElementById('analyticsTradeDistChart').getContext('2d');
+            analyticsCharts.tradeDist = new Chart(tdCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Winning', 'Losing'],
+                    datasets: [{ data: [analytics.trade_distribution.winning, analytics.trade_distribution.losing], backgroundColor: ['#10b981', '#f43f5e'], borderWidth: 0, hoverOffset: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } } }
+            });
+
+            // Holding Time
+            const htCtx = document.getElementById('holdingTimeChart').getContext('2d');
+            analyticsCharts.holdingTime = new Chart(htCtx, {
+                type: 'bar',
+                data: {
+                    labels: analytics.holding_time_analysis.distribution.labels,
+                    datasets: [{ label: 'Trades', data: analytics.holding_time_analysis.distribution.values, backgroundColor: '#3b82f6', borderRadius: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 9 } } }, y: { grid: { color: '#1e293b' } } } }
+            });
+
+            // Streak metrics
+            const streak = analytics.win_loss_streak;
+            document.getElementById('streak-metrics').innerHTML = `
+                <div class="flex justify-between py-2 border-b border-slate-800"><span class="text-slate-400 text-sm">Longest Win Streak</span><span class="mono text-emerald-400">${streak.longest_win}</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-800"><span class="text-slate-400 text-sm">Longest Loss Streak</span><span class="mono text-rose-400">${streak.longest_loss}</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-800"><span class="text-slate-400 text-sm">Current Streak</span><span class="mono ${streak.current_type === 'win' ? 'text-emerald-400' : 'text-rose-400'}">${streak.current_streak} ${streak.current_type}</span></div>
+                <div class="flex justify-between py-2"><span class="text-slate-400 text-sm">Avg Hold (Win)</span><span class="mono">${analytics.holding_time_analysis.avg_win}d</span></div>
+                <div class="flex justify-between py-2"><span class="text-slate-400 text-sm">Avg Hold (Loss)</span><span class="mono">${analytics.holding_time_analysis.avg_loss}d</span></div>
+                <div class="flex justify-between py-2"><span class="text-slate-400 text-sm">Avg Hold (All)</span><span class="mono">${analytics.holding_time_analysis.avg}d</span></div>
+            `;
+
+            // Risk metrics
+            const risk = analytics.risk_analysis;
+            document.getElementById('risk-metrics').innerHTML = `
+                <div class="p-4 bg-slate-900/50 rounded-lg text-center"><p class="text-xs text-slate-400 mb-1">Volatility (Ann.)</p><p class="text-lg font-bold mono">${formatPct(risk.volatility_annual)}</p></div>
+                <div class="p-4 bg-slate-900/50 rounded-lg text-center"><p class="text-xs text-slate-400 mb-1">Downside Deviation</p><p class="text-lg font-bold mono">${formatPct(risk.downside_deviation)}</p></div>
+                <div class="p-4 bg-slate-900/50 rounded-lg text-center"><p class="text-xs text-slate-400 mb-1">VaR 95%</p><p class="text-lg font-bold mono text-rose-400">${formatPct(risk.var_95)}</p></div>
+                <div class="p-4 bg-slate-900/50 rounded-lg text-center"><p class="text-xs text-slate-400 mb-1">CVaR 95%</p><p class="text-lg font-bold mono text-rose-400">${formatPct(risk.cvar_95)}</p></div>
+                <div class="p-4 bg-slate-900/50 rounded-lg text-center"><p class="text-xs text-slate-400 mb-1">Skewness</p><p class="text-lg font-bold mono">${formatNum(risk.skewness, 2)}</p></div>
+                <div class="p-4 bg-slate-900/50 rounded-lg text-center"><p class="text-xs text-slate-400 mb-1">Kurtosis</p><p class="text-lg font-bold mono">${formatNum(risk.kurtosis, 2)}</p></div>
+                <div class="p-4 bg-slate-900/50 rounded-lg text-center"><p class="text-xs text-slate-400 mb-1">Max Consec. Loss Days</p><p class="text-lg font-bold mono">${risk.max_consecutive_loss_days}</p></div>
+            `;
+        }
+
+        function renderMonthlyHeatmap(heatmap) {
+            const container = document.getElementById('monthlyHeatmap');
+            if (!heatmap || !heatmap.data || !heatmap.data.length) {
+                container.innerHTML = '<p class="text-sm text-slate-500">No data available.</p>';
+                return;
+            }
+
+            const maxAbs = Math.max(
+                Math.abs(Math.min(...heatmap.data.flat().filter(v => v !== null))),
+                Math.abs(Math.max(...heatmap.data.flat().filter(v => v !== null)))
+            ) || 1;
+
+            function cellColor(value) {
+                if (value === null) return '#1e293b';
+                const intensity = Math.min(Math.abs(value) / maxAbs, 1);
+                if (value >= 0) return `rgba(16, 185, 129, ${0.2 + intensity * 0.8})`;
+                return `rgba(244, 63, 94, ${0.2 + intensity * 0.8})`;
+            }
+
+            let html = '<div class="heatmap-grid">';
+            html += '<div class="heatmap-label"></div>';
+            for (const m of heatmap.months) html += `<div class="heatmap-header">${m}</div>`;
+            for (let i = 0; i < heatmap.years.length; i++) {
+                html += `<div class="heatmap-label">${heatmap.years[i]}</div>`;
+                for (let j = 0; j < 12; j++) {
+                    const val = heatmap.data[i][j];
+                    const display = val !== null ? (val >= 0 ? '+' : '') + val.toFixed(1) + '%' : '';
+                    html += `<div class="heatmap-cell" style="background-color: ${cellColor(val)}" title="${heatmap.years[i]}-${heatmap.months[j]}: ${display || 'N/A'}">${display}</div>`;
+                }
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function initEmptyCharts() {
+            // Dashboard equity placeholder
+            const equityCtx = document.getElementById('equityChart').getContext('2d');
+            const gradient = equityCtx.createLinearGradient(0, 0, 0, 320);
+            gradient.addColorStop(0, 'rgba(59,130,246,0.3)');
+            gradient.addColorStop(1, 'rgba(59,130,246,0)');
+            charts.equity = new Chart(equityCtx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Strategy Equity', data: [], borderColor: '#3b82f6', backgroundColor: gradient, fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 }] },
+                options: chartOptions('$')
+            });
+        }
+
+        // ----------------------------
+        // Trades & history
+        // ----------------------------
+        let currentTradeBacktestId = null;
+        let currentTradesTotal = 0;
+
+        async function loadTradesPage(backtestId, page) {
+            if (!backtestId) return;
+            currentTradeBacktestId = backtestId;
+            const side = document.getElementById('trade-filter-side')?.value || '';
+            const pageSize = 25;
+            try {
+                const data = await apiGet(`/api/backtest/${backtestId}/trades?page=${page}&page_size=${pageSize}&side=${side}`);
+                currentTradesTotal = data.total;
+                renderTrades(data.trades, (page - 1) * pageSize);
+                document.getElementById('trades-summary').textContent = `${data.total} trades total`;
+                document.getElementById('trades-pagination-info').textContent = `Page ${data.page} of ${data.pages} (${data.total} trades)`;
+
+                const controls = document.getElementById('trades-pagination-controls');
+                if (data.pages <= 1) {
+                    controls.innerHTML = '';
+                } else {
+                    let html = `<button ${data.page === 1 ? 'disabled' : ''} class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors">Previous</button>`;
+                    for (let i = 1; i <= data.pages; i++) {
+                        html += `<button class="px-3 py-1 rounded text-sm transition-colors ${i === data.page ? 'bg-blue-600 text-white' : 'bg-slate-800 hover:bg-slate-700'}">${i}</button>`;
+                    }
+                    html += `<button ${data.page === data.pages ? 'disabled' : ''} class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors">Next</button>`;
+                    controls.innerHTML = html;
+                    const btns = controls.querySelectorAll('button');
+                    btns[0].onclick = () => loadTradesPage(backtestId, data.page - 1);
+                    for (let i = 1; i <= data.pages; i++) {
+                        btns[i].onclick = () => loadTradesPage(backtestId, i);
+                    }
+                    btns[btns.length - 1].onclick = () => loadTradesPage(backtestId, data.page + 1);
+                }
+            } catch (err) {
+                document.getElementById('trades-body').innerHTML = `<tr><td colspan="10" class="px-6 py-8 text-center text-rose-400">${err.message}</td></tr>`;
+            }
+        }
+
+        function renderTrades(trades, offset = 0) {
+            const tbody = document.getElementById('trades-body');
+            if (!trades || !trades.length) {
+                tbody.innerHTML = '<tr><td colspan="10" class="px-6 py-8 text-center text-slate-500">No trades generated.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = trades.map((t, i) => {
+                const isWin = t.pnl >= 0;
+                const isOpen = t.status && t.status.toLowerCase() === 'open';
+                return `
+                    <tr class="hover:bg-slate-800/30 transition-colors">
+                        <td class="px-6 py-3 text-slate-400">${offset + i + 1}</td>
+                        <td class="px-6 py-3">${t.entry_date}</td>
+                        <td class="px-6 py-3">${t.exit_date || '—'}</td>
+                        <td class="px-6 py-3"><span class="px-2 py-0.5 rounded text-xs ${t.side === 'Long' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${t.side}</span></td>
+                        <td class="px-6 py-3"><span class="px-2 py-0.5 rounded text-xs ${isOpen ? 'bg-amber-500/10 text-amber-400' : 'bg-slate-700 text-slate-300'}">${t.status}</span></td>
+                        <td class="px-6 py-3 text-right mono">${parseFloat(t.size).toFixed(2)}</td>
+                        <td class="px-6 py-3 text-right mono">$${parseFloat(t.entry).toFixed(2)}</td>
+                        <td class="px-6 py-3 text-right mono">${t.exit ? '$' + parseFloat(t.exit).toFixed(2) : '—'}</td>
+                        <td class="px-6 py-3 text-right mono ${isWin ? 'text-emerald-400' : 'text-rose-400'}">${isWin ? '+' : ''}$${Math.abs(t.pnl).toFixed(2)}</td>
+                        <td class="px-6 py-3 text-right mono ${isWin ? 'text-emerald-400' : 'text-rose-400'}">${isWin ? '+' : ''}${parseFloat(t.return_pct).toFixed(2)}%</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function exportTrades() {
+            if (!currentTradeBacktestId) return;
+            try {
+                const data = await apiGet(`/api/backtest/${currentTradeBacktestId}/trades?page=1&page_size=10000`);
+                const rows = data.trades.map(t => `${t.entry_date},${t.exit_date || ''},${t.side},${t.status},${t.size},${t.entry},${t.exit || ''},${t.pnl},${t.return_pct}`).join('\n');
+                const csv = `Entry Date,Exit Date,Side,Status,Size,Entry,Exit,PnL,Return%\n${rows}`;
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `trades_${currentTradeBacktestId}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                showAlert('Export failed: ' + err.message);
+            }
+        }
+
+        async function loadRecentBacktests() {
+            try {
+                const items = await apiGet('/api/backtests');
+                console.log("BACKTESTS =", items);
+                if (items.length > 0) {
+                console.log("FIRST ITEM =", items[0]);
+                console.log(JSON.stringify(items[0], null, 2));
+            }
+                lastBacktests = items;
+                renderRecentBacktests(items);
+                updateDashboardStats(items);
+                if (items.length > 0) {
+                currentResult = items[0];
+
+                renderResults(currentResult);
+                renderCharts(currentResult);
+                renderTrades(currentResult);
+
+                if (typeof renderAnalytics === "function") {
+                renderAnalytics(currentResult.analytics || {});
+            }
+        }
+            } catch (err) {
+                console.error('Failed to load backtests', err);
+            }
+        }
+        
+
+        function renderRecentBacktests(items) {
+            const tbody = document.getElementById('recent-backtests-body');
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-500">Run your first backtest to see results here.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = items.slice(0, 6).map(item => {
+                const isPos = item.total_return >= 0;
+                return `
+                    <tr class="hover:bg-slate-800/30 transition-colors cursor-pointer" onclick="loadBacktest('${item.id}')">
+                        <td class="px-6 py-4 font-medium">
+                        ${item.name || item.strategy || item.strategy_config?.name || 'Unknown Strategy'}
+                        </td>
+                        <td class="px-6 py-4 text-slate-400">${item.symbol}</td>
+                        <td class="px-6 py-4 text-slate-400">${item.start} → ${item.end}</td>
+                        <td class="px-6 py-4 text-right mono ${isPos ? 'text-emerald-400' : 'text-rose-400'}">${isPos ? '+' : ''}${item.total_return.toFixed(2)}%</td>
+                        <td class="px-6 py-4 text-right mono">${item.win_rate.toFixed(1)}%</td>
+                        <td class="px-6 py-4 text-center"><span class="px-2 py-1 rounded-full text-xs bg-emerald-500/10 text-emerald-400">${item.status}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function loadBacktest(id) {
+            try {
+                const result = await apiGet(`/api/backtest/${id}`);
+                currentBacktest = result;
+                await renderResults(result);
+                showSection('results');
+            } catch (err) {
+                showAlert('Failed to load backtest: ' + err.message);
+            }
+        }
+
+        function updateDashboardStats(items) {
+            document.getElementById('db-total-backtests').textContent = items.length;
+            if (items.length) {
+                const avgWin = items.reduce((s, i) => s + i.win_rate, 0) / items.length;
+                const best = Math.max(...items.map(i => i.total_return));
+                const avgSharpe = items.reduce((s, i) => s + i.sharpe_ratio, 0) / items.length;
+                document.getElementById('db-avg-winrate').textContent = avgWin.toFixed(1) + '%';
+                document.getElementById('db-best-return').textContent = '+' + best.toFixed(2) + '%';
+                document.getElementById('db-avg-sharpe').textContent = avgSharpe.toFixed(2);
+
+                // Update dashboard equity chart with latest result
+                if (charts.equity) {
+                    apiGet(`/api/backtest/${items[0].id}`).then(res => {
+                        if (res.equity_curve && res.equity_curve.length) {
+                            charts.equity.data.labels = res.equity_curve.map(d => d.date);
+                            charts.equity.data.datasets[0].data = res.equity_curve.map(d => d.equity);
+                            charts.equity.update();
+                        }
+                    });
+                }
+            }
+        }
+
+        // ----------------------------
+        // Navigation
+        // ----------------------------
+        const sections = {
+            dashboard: { title: 'Dashboard', subtitle: 'Overview of your backtesting activity' },
+            builder: { title: 'Strategy Builder', subtitle: 'Create and configure your strategy' },
+            results: { title: 'Backtest Results', subtitle: 'Performance analysis and metrics' },
+            charts: { title: 'Advanced Charts', subtitle: 'Visualize market data and analytics' },
+            trades: { title: 'Trade Log', subtitle: 'Detailed history of all executed trades' },
+            analytics: { title: 'Professional Analytics', subtitle: 'Deep performance and risk analysis' }
+        };
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            document.getElementById('nav-' + sectionId).classList.add('active');
+            document.getElementById('page-title').textContent = sections[sectionId].title;
+            document.getElementById('page-subtitle').textContent = sections[sectionId].subtitle;
+            window.scrollTo(0, 0);
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
