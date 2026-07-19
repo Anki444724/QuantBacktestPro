@@ -675,15 +675,15 @@
         }
 
         function populateSymbols() {
-            const select = document.getElementById('symbol-select');
-            select.innerHTML = '<option value="" disabled selected>Choose a symbol</option>';
             for (const sym of symbols) {
-                const opt = document.createElement('option');
-                opt.value = sym.ticker;
-                opt.textContent = `${sym.ticker} — ${sym.name}`;
-                select.appendChild(opt);
-            }
-            select.value = 'AAPL';
+            const opt = document.createElement('option');
+            opt.value = sym.symbol;
+            opt.textContent = `${sym.symbol} — ${sym.name}`;
+            select.appendChild(opt);
+        }
+
+        // Default selection
+        select.value = "RELIANCE.NS";
         }
 
         // ----------------------------
