@@ -675,16 +675,20 @@
         }
 
         function populateSymbols() {
-            for (const sym of symbols) {
-            const opt = document.createElement('option');
-            opt.value = sym.symbol;
-            opt.textContent = `${sym.symbol} — ${sym.name}`;
-            select.appendChild(opt);
-        }
+    const select = document.getElementById('symbol-select');
 
-        // Default selection
-        select.value = "RELIANCE.NS";
-        }
+    select.innerHTML = '<option value="" disabled selected>Choose a symbol</option>';
+
+    for (const sym of symbols) {
+        const opt = document.createElement('option');
+        opt.value = sym.symbol;
+        opt.textContent = `${sym.symbol} — ${sym.name}`;
+        select.appendChild(opt);
+    }
+
+    // Default selection
+    select.value = "RELIANCE.NS";
+}
 
         // ----------------------------
         // No-code Strategy Builder
