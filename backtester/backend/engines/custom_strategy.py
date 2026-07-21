@@ -64,5 +64,13 @@ class CustomStrategy:
             entries = pd.Series(False, index=df.index)
 
         exits = pd.Series(False, index=df.index)
+        print("Indicators from frontend:")
+        print(config.get("indicators", []))
+
+        print("Indicator keys created:")
+        print(list(indicator_values.keys()))
+
+        print("Entry rules:")
+        print(config.get("entry_rules"))
 
         return entries, exits
