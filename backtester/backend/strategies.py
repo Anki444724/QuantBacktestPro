@@ -1,5 +1,5 @@
 from __future__ import annotations
-from backtester.backend.engines.custom_strategy import CustomStrategy
+from engines.custom_strategy import CustomStrategy
 from typing import Dict, Tuple
 
 import pandas as pd

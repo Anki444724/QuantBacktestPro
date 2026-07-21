@@ -1838,13 +1838,33 @@ adx: {
                 if (items.length > 0) {
                 currentResult = items[0];
 
-                renderResults(currentResult);
-                renderCharts(currentResult);
-                renderTrades(currentResult);
+try {
+    console.log("renderResults");
+    renderResults(currentResult);
+} catch(e) {
+    console.error("renderResults FAILED", e);
+}
 
-                if (typeof renderAnalytics === "function") {
-                renderAnalytics(currentResult.analytics || {});
-            }
+try {
+    console.log("renderCharts");
+    renderCharts(currentResult);
+} catch(e) {
+    console.error("renderCharts FAILED", e);
+}
+
+try {
+    console.log("renderTrades");
+    renderTrades(currentResult);
+} catch(e) {
+    console.error("renderTrades FAILED", e);
+}
+
+try {
+    console.log("renderAnalytics");
+    renderAnalytics(currentResult.analytics || {});
+} catch(e) {
+    console.error("renderAnalytics FAILED", e);
+}
         }
             } catch (err) {
                 console.error('Failed to load backtests', err);
