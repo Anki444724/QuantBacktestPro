@@ -1,8 +1,8 @@
 from typing import Dict, Tuple
 import pandas as pd
 
-from backtester.backend.engines.indicator_engine import IndicatorEngine
-from backtester.backend.engines.rule_engine import RuleEngine
+from engines.indicator_engine import IndicatorEngine
+from engines.rule_engine import RuleEngine
 
 
 class CustomStrategy:
