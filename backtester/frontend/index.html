@@ -40,22 +40,24 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .metric-card:hover { transform: translateY(-2px); }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            background: #3b82f6;
-            cursor: pointer;
-            border-radius: 50%;
-        }
         input[type="range"] {
-            -webkit-appearance: none;
-            height: 6px;
-            background: #334155;
-            border-radius: 3px;
-            outline: none;
-        }
+    appearance: none;
+    -webkit-appearance: none;
+    height: 6px;
+    background: #334155;
+    border-radius: 3px;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #3b82f6;
+    border-radius: 50%;
+    cursor: pointer;
+}
         .spinner { animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .builder-section { display: none; }
@@ -1034,22 +1036,63 @@ adx: {
         }
 
         function updateCondition(type, groupId, conditionId, field, subfield, value) {
-            const list = type === 'entry' ? builderEntryGroups : builderExitGroups;
-            const group = list.find(g => g.id === groupId);
-            const cond = group?.conditions.find(c => c.id === conditionId);
-            if (!cond) return;
-            if (field === 'op') {
-                cond.op = value;
-            } else {
-                cond[field][subfield] = value;
-                if (subfield === 'type') {
-                    if (value === 'value') cond[field].value = 0;
-                    else if (value === 'ohlc') cond[field].name = 'close';
-                    else if (value === 'indicator') cond[field].name = getIndicatorOptions()[0]?.value || '';
-                }
-            }
-            renderRuleGroups(type);
+
+    const list = type === "entry"
+        ? builderEntryGroups
+        : builderExitGroups;
+
+    const group = list.find(g => g.id === groupId);
+    if (!group) return;
+
+    const cond = group.conditions.find(c => c.id === conditionId);
+    if (!cond) return;
+
+    if (field === "op") {
+        cond.op = value;
+        return;
+    }
+
+    if (!cond[field]) {
+        cond[field] = {};
+    }
+
+    cond[field][subfield] = value;
+
+    if (subfield === "type") {
+
+        switch (value) {
+
+            case "indicator":
+
+                cond[field] = {
+                    type: "indicator",
+                    name: getIndicatorOptions()[0]?.value || ""
+                };
+
+                break;
+
+            case "ohlc":
+
+                cond[field] = {
+                    type: "ohlc",
+                    name: "close"
+                };
+
+                break;
+
+            case "value":
+
+                cond[field] = {
+                    type: "value",
+                    value: 0
+                };
+
+                break;
         }
+    }
+
+    renderRuleGroups(type);
+}
 
         function renderOperand(prefix, operand, type) {
             const indicatorOptions = getIndicatorOptions().map(o => `<option value="${o.value}" ${operand.name === o.value ? 'selected' : ''}>${o.label}</option>`).join('');
@@ -1810,26 +1853,39 @@ adx: {
         
 
         function renderRecentBacktests(items) {
+                console.log("RENDER RECENT BACKTESTS NEW VERSION");
             const tbody = document.getElementById('recent-backtests-body');
             if (!items.length) {
                 tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-500">Run your first backtest to see results here.</td></tr>';
                 return;
             }
             tbody.innerHTML = items.slice(0, 6).map(item => {
-                const isPos = item.total_return >= 0;
-                return `
-                    <tr class="hover:bg-slate-800/30 transition-colors cursor-pointer" onclick="loadBacktest('${item.id}')">
-                        <td class="px-6 py-4 font-medium">
-                        ${item.name || item.strategy || item.strategy_config?.name || 'Unknown Strategy'}
-                        </td>
-                        <td class="px-6 py-4 text-slate-400">${item.symbol}</td>
-                        <td class="px-6 py-4 text-slate-400">${item.start} → ${item.end}</td>
-                        <td class="px-6 py-4 text-right mono ${isPos ? 'text-emerald-400' : 'text-rose-400'}">${isPos ? '+' : ''}${item.total_return.toFixed(2)}%</td>
-                        <td class="px-6 py-4 text-right mono">${item.win_rate.toFixed(1)}%</td>
-                        <td class="px-6 py-4 text-center"><span class="px-2 py-1 rounded-full text-xs bg-emerald-500/10 text-emerald-400">${item.status}</span></td>
-                    </tr>
-                `;
-            }).join('');
+                console.log("ITEM =", item);
+    const totalReturn = Number(item.total_return ?? 0);
+    const winRate = Number(item.win_rate ?? 0);
+    const isPos = totalReturn >= 0;
+
+    return `
+        <tr class="hover:bg-slate-800/30 transition-colors cursor-pointer" onclick="loadBacktest('${item.id}')">
+            <td class="px-6 py-4 font-medium">
+                ${item.name || item.strategy || item.strategy_config?.name || 'Unknown Strategy'}
+            </td>
+            <td class="px-6 py-4 text-slate-400">${item.symbol}</td>
+            <td class="px-6 py-4 text-slate-400">${item.start} → ${item.end}</td>
+            <td class="px-6 py-4 text-right mono ${isPos ? 'text-emerald-400' : 'text-rose-400'}">
+                ${isPos ? '+' : ''}${totalReturn.toFixed(2)}%
+            </td>
+            <td class="px-6 py-4 text-right mono">
+                ${winRate.toFixed(1)}%
+            </td>
+            <td class="px-6 py-4 text-center">
+                <span class="px-2 py-1 rounded-full text-xs bg-emerald-500/10 text-emerald-400">
+                    ${item.status}
+                </span>
+            </td>
+        </tr>
+    `;
+}).join('');
         }
 
         async function loadBacktest(id) {
